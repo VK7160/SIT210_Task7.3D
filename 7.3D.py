@@ -1,54 +1,57 @@
 import RPi.GPIO as GPIO
 import time
-GPIO.setwarnings(False)
+from time import sleep
+
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(13, GPIO.OUT)
-GPIO.setup(19, GPIO.IN)
-GPIO.setup(26, GPIO.OUT)
 
-trig = 13
-echo = 19
-led = 26
+GPIO.setwarnings(False)
 
-pwm = GPIO.PWM(21, 100)                 
-pwm.start(100)
+GPIO_TRIGGER =23
+GPIO_ECHO = 24
+led = 25
 
-def cal_distance():
-    GPIO.output(trig, True)
+GPIO.setup(GPIO_TRIGGER, GPIO.OUT)
+GPIO.setup(GPIO_ECHO, GPIO.IN)
+GPIO.setup(led, GPIO.OUT)
+
+def distance():
+    GPIO.output(GPIO_TRIGGER, True)
     
     time.sleep(0.00001)
-    GPIO.output(trig, False)
-
-    start = time.time()
-    stop  = time.time()
-
-    while GPIO.input(echo) == 0:
-        start = time.time()
+    GPIO.output(GPIO_TRIGGER, False)
     
-    while GPIO.input(echo) == 1:
-        stop = time.time()
-
-    elapse_time = stop - start
-    distance = (elapse_time * 34300) / 2
+    StartTime = time.time()
+    StopTime = time.time()
+    
+    while GPIO.input(GPIO_ECHO) == 0:
+        StartTime = time.time()
+        
+    while GPIO.input(GPIO_ECHO) == 1:
+        StopTime = time.time()
+        
+    TimeElapsed = StopTime - StartTime
+    
+    distance = (TimeElapsed *34000)/2
+    
     return distance
 
-try: 
-  while True:
-       dist = cal_distance()
-       if(dist > 40):
-          pwm.ChangeDutyCycle(30)
-          time.sleep(2)
-       elif(dist > 25 and dist <40):
-          pwm.ChangeDutyCycle(60)
-          time.sleep(2)
-       elif(dist > 15 and dist <25):
-          pwm.ChangeDutyCycle(100) 
-          time.sleep(2)
-       else:
-          pwm.ChangeDutyCycle(20)
-          time.sleep(2)
-          
-except KeyboardInterrupt:
+p = GPIO.PWM(led, 50)
+p.start(0);
+if __name__ == '__main__':
+    try:
+        while True:
+            dist = distance()
+            print ("Measured Distance = %.lf cm" % dist)
+            if distance() <= 10:
+                for dc in range (50, 101, 5):
+                    p.ChangeDutyCycle(dc)
+                    sleep(0.1)
+            elif 20 <= distance() > 10:
+                for dc in range (11, -1, -5):
+                    p.ChangeDutyCycle(dc)
+                    sleep(0.1)
+                
+    except KeyboardInterrupt:
         print("Measurement stopped by User")
         p.stop()
         GPIO.cleanup() 
